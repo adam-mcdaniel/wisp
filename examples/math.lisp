@@ -27,4 +27,13 @@
 
 (defun fact (n) (reduce * 1.0 (range 2 (inc n))))
 
+(defun collatz (n)
+    (if (= (print n) 1) 1
+        (if (is-odd n)
+            (collatz (+ (* n 3) 1))
+            (collatz (/ n 2))
+        )))
+
+(collatz 27)
+
 "success"

@@ -1,4 +1,4 @@
-/// A microlisp by Adam McDaniel
+/// A microlisp named Wisp, by Adam McDaniel
 
 ////////////////////////////////////////////////////////////////////////////////
 /// LANGUAGE OPTIONS ///////////////////////////////////////////////////////////
@@ -84,6 +84,10 @@ std::string read_file_contents(std::string filename) {
 #define QUOTE_TYPE "quote"
 #define LIST_TYPE "list"
 
+////////////////////////////////////////////////////////////////////////////////
+/// HELPER FUNCTIONS ///////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
 // Convert an object to a string using a stringstream conveniently
 #define to_string( x ) static_cast<std::ostringstream&>((std::ostringstream() << std::dec << x )).str()
 
@@ -91,6 +95,10 @@ std::string read_file_contents(std::string filename) {
 bool is_symbol(char ch) {
     return (isalpha(ch) || ispunct(ch)) && ch != '(' && ch != ')' && ch != '"' && ch != '\'';
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// LISP CONSTRUCTS ////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 // Forward declaration for Environment class definition
 class Value;
@@ -831,7 +839,21 @@ inline void skip_whitespace(std::string &s, int &ptr) {
 Value parse(std::string &s, int &ptr) {
     skip_whitespace(s, ptr);
 
-    if (s[ptr] == '\'') {
+    if (s[ptr] == ';') {
+        // If this is a comment
+        int save_ptr = ptr;
+        while (s[save_ptr] != '\n' && save_ptr < int(s.length())) { save_ptr++; }
+        s.erase(ptr, save_ptr - ptr);
+        skip_whitespace(s, ptr);
+
+        if (s.substr(ptr, s.length()-ptr-1) == "")
+            return Value();
+    }
+
+
+    if (s == "") {
+        return Value();
+    } else if (s[ptr] == '\'') {
         // If this is a quote
         ptr++;
         return Value::quote(parse(s, ptr));
@@ -873,8 +895,6 @@ Value parse(std::string &s, int &ptr) {
             n++;
         }
 
-
-
         std::string x = s.substr(ptr+1, n-1);
         ptr += n+1;
         skip_whitespace(s, ptr);
@@ -885,8 +905,7 @@ Value parse(std::string &s, int &ptr) {
         ptr++;
         skip_whitespace(s, ptr);
         return Value();
-    } else if (s == "") {
-        return Value();
+
     } else if (is_symbol(s[ptr])) {
         // If this is a string
         int n = 0;
@@ -1370,8 +1389,6 @@ namespace builtin {
 
 void repl(Environment &env) {
 #ifdef USE_STD
-    std::cout << run("(define wisp '((version 0.1) (author \"Adam McDaniel\")))", env) << std::endl;
-
     std::string code;
     std::string input;
     Value tmp;
@@ -1484,12 +1501,24 @@ Value Environment::get(std::string name) {
     throw Error(Value::atom(name), *this, ATOM_NOT_DEFINED);
 }
 
-int main() {
+int main(int argc, const char **argv) {
     Environment env;
 
-    repl(env);
-    // parse("(do (defun fact (n) (if (<= n 1) 1.0 (* n (fact (- n 1))))) (print (fact 1000.0)))").eval(env);
-    // run(read_file_contents("list.lisp"), env);
+    try {
+        if (argc == 1 || (argc == 2 && std::string(argv[1]) == "-i"))
+            repl(env);
+        else if (argc == 3 && std::string(argv[1]) == "-f")
+            run(read_file_contents(argv[2]), env);
+        else if (argc == 3 && std::string(argv[1]) == "-c")
+            run(argv[2], env);
+        #ifdef USE_STD
+        else std::cerr << "invalid arguments" << std::endl;
+        #endif
+    } catch (Error &e) {
+        std::cerr << e.description() << std::endl;
+    } catch (std::runtime_error &e) {
+        std::cerr << e.what() << std::endl;
+    }
 
     return 0;
 }
