@@ -109,11 +109,14 @@ class Environment {
 public:
     // Default constructor
     Environment() : parent_scope(NULL) {}
-    // Default constructor
-    Environment(Environment *parent) : parent_scope(parent) {}
 
+    // Does this environment, or its parent environment,
+    // have this atom in scope?
+    // This is only used to determine which atoms to capture when
+    // creating a lambda function.
+    bool has(std::string name) const;
     // Get the value associated with this name in this scope
-    Value get(std::string name);
+    Value get(std::string name) const;
     // Set the value associated with this name in this scope
     void set(std::string name, Value value);
 
@@ -138,7 +141,9 @@ class Error {
 public:
     // Create an error with the value that caused the error,
     // the scope where the error was found, and the message.
-    Error(Value v, Environment env, const char *msg);
+    Error(Value v, Environment const &env, const char *msg);
+    // Copy constructor is needed to prevent double frees
+    Error(Error const &other);
     ~Error();
 
     // Get the printable error description.
@@ -169,7 +174,7 @@ public:
     // Constructs a list
     inline Value(std::vector<Value> list) : type(LIST), list(list) {}
 
-    // Quote a value
+    // Construct a quoted value
     static Value quote(Value quoted) {
         Value result;
         result.type = QUOTE;
@@ -200,16 +205,20 @@ public:
         return result;
     }
 
-
     // Construct a lambda function
-    Value(std::vector<Value> params, Value ret, Environment env) : type(LAMBDA) {
+    Value(std::vector<Value> params, Value ret, Environment const &env) : type(LAMBDA) {
         // We store the params and the result in the list member
         // instead of having dedicated members. This is to save memory.
         list.push_back(Value(params));
         list.push_back(ret);
 
-        // The environment has its own member.
-        lambda_scope = env;
+        // Lambdas capture only variables that they know they will use.
+        std::vector<std::string> used_atoms = ret.get_used_atoms();
+        for (size_t i=0; i<used_atoms.size(); i++) {
+            // If the environment has a symbol that this lambda uses, capture it.
+            if (env.has(used_atoms[i]))
+                lambda_scope.set(used_atoms[i], env.get(used_atoms[i]));
+        }
     }
 
     // Construct a builtin function
@@ -224,6 +233,38 @@ public:
     ////////////////////////////////////////////////////////////////////////////////
     /// C++ INTEROP METHODS ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
+
+    // Get all of the atoms used in a given Value
+    std::vector<std::string> get_used_atoms() {
+        std::vector<std::string> result, tmp;
+        switch (type) {
+        case QUOTE:
+            // The data for a quote is stored in the
+            // first slot of the list member.
+            return list[0].get_used_atoms();
+        case ATOM:
+            // If this is an atom, add it to the list
+            // of used atoms in this expression.
+            result.push_back(as_atom());
+            return result;
+        case LAMBDA:
+            // If this is a lambda, get the list of used atoms in the body
+            // of the expression.
+            return list[1].get_used_atoms();
+        case LIST:
+            // If this is a list, add each of the atoms used in all
+            // of the elements in the list.
+            for (size_t i=0; i<list.size(); i++) {
+                // Get the atoms used in the element
+                tmp = list[i].get_used_atoms();
+                // Add the used atoms to the current list of used atoms
+                result.insert(result.end(), tmp.begin(), tmp.end());
+            }
+            return result;
+        default:
+            return result;
+        }
+    }
 
     // Is this a builtin function?
     inline bool is_builtin() {
@@ -737,12 +778,16 @@ private:
     Environment lambda_scope;
 };
 
-inline Error::Error(Value v, Environment env, const char *msg) : env(env), msg(msg) {
+Error::Error(Value v, Environment const &env, const char *msg) : env(env), msg(msg) {
     cause = new Value;
     *cause = v;
 }
 
-inline Error::~Error() {
+Error::Error(Error const &other) : env(other.env), msg(other.msg) {
+    cause = new Value(*other.cause);
+}
+
+Error::~Error() {
     delete cause;
 }
 
@@ -1423,8 +1468,22 @@ void repl(Environment &env) {
 #endif
 }
 
+// Does this environment, or its parent environment, have a variable?
+bool Environment::has(std::string name) const {
+    // Find the value in the map
+    std::map<std::string, Value>::const_iterator itr = defs.find(name);
+    if (itr != defs.end())
+        // If it was found
+        return true;
+    else if (parent_scope != NULL)
+        // If it was not found in the current environment,
+        // try to find it in the parent environment
+        return parent_scope->has(name);
+    else return false;
+}
 
-Value Environment::get(std::string name) {
+// Get the value associated with this name in this scope
+Value Environment::get(std::string name) const {
     // Meta operations
     if (name == "eval")  return Value("eval",  builtin::eval);
     if (name == "type")  return Value("type",  builtin::get_type_name);
@@ -1491,7 +1550,7 @@ Value Environment::get(std::string name) {
     // Constants
     if (name == "endl") return Value::string("\n");
     
-    std::map<std::string, Value>::iterator itr = defs.find(name);
+    std::map<std::string, Value>::const_iterator itr = defs.find(name);
     if (itr != defs.end()) return itr->second;
     else if (parent_scope != NULL) {
         itr = parent_scope->defs.find(name);
