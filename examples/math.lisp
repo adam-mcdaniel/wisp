@@ -34,6 +34,4 @@
             (collatz (/ n 2))
         )))
 
-(collatz 27)
-
 "success"

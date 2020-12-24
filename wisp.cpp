@@ -1434,6 +1434,7 @@ Value Environment::get(std::string name) {
     if (name == "do")    return Value("do",    builtin::do_block);
     if (name == "if")    return Value("if",    builtin::if_then_else);
     if (name == "scope") return Value("scope", builtin::scope);
+    if (name == "quote") return Value("quote", builtin::quote);
     if (name == "defun") return Value("defun", builtin::defun);
     if (name == "define") return Value("define", builtin::define);
     if (name == "lambda") return Value("lambda", builtin::lambda);
