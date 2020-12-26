@@ -74,7 +74,43 @@ As you can see, quote negates an evaluation. For example, whenever the expressio
 |`(define name value)`|`define` evaluates the `value` argument, which is then assigned to `name` in the current scope.|This special form allows the user to bind atoms to values in a scope.|
 |`(lambda params body)`|`lambda` evaluates none of its arguments.|This special form allows the user to define anonymous functions.|
 |`(quote x)`|`quote` evaluates none of its arguments.|This is equivalent to the `'expr` syntactic sugar.|
+|`(for x list ...)`|`for` evaluates only its list argument.|`for` iterates through the list storing each element in `x`, and then evaluating all of the rest of the values in the `for` body. It then returns the last value evaluated.|
+|`(while cond ...)`|`while` evaluates only its cond argument.|`while` evaluates its condition expression every iteration before running. If it is true, it continues to evaluate every expression in the `while` body. It then returns the last value evaluated.|
 
+
+## Examples
+
+Here are some example math-y functions to wrap your head around.
+
+```lisp
+; quicksort
+(defun qs (l)
+    (if (<= (len l) 1)
+        l
+        (do
+            (define pivot (first l))
+            (+
+                (qs (filter (lambda (n) (> pivot n)) l))
+                (list pivot)
+                (qs (tail (filter (lambda (n) (<= pivot n)) l)))
+            ))
+    ))
+
+; decrement a number
+(defun dec (n) (- n 1))
+; increment a number
+(defun inc (n) (+ n 1))
+; not a bool
+(defun not (x) (if x 0 1))
+
+; negate a number
+(defun neg (n) (- 0 n))
+
+; is a number positive?
+(defun is-pos? (n) (> n 0))
+; is a number negative?
+(defun is-neg? (n) (< n 0))
+```
 
 ## Usage
 

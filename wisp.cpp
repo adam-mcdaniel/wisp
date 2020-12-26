@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <ctime>
 
 std::string read_file_contents(std::string filename) {
     std::ifstream f;
@@ -37,6 +38,7 @@ std::string read_file_contents(std::string filename) {
 
     return contents;
 }
+
 #else
 #define NO_STD "no standard library support"
 #endif
@@ -69,6 +71,7 @@ std::string read_file_contents(std::string filename) {
 #define ATOM_NOT_DEFINED "atom not defined"
 #define EVAL_EMPTY_LIST "evaluated empty list"
 #define INTERNAL_ERROR "interal virtual machine error"
+#define INDEX_OUT_OF_RANGE "index out of range"
 #define MALFORMED_PROGRAM "malformed program"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,6 +93,15 @@ std::string read_file_contents(std::string filename) {
 
 // Convert an object to a string using a stringstream conveniently
 #define to_string( x ) static_cast<std::ostringstream&>((std::ostringstream() << std::dec << x )).str()
+
+// Replace a substring with a replacement string in a source string
+void replace_substring(std::string &src, std::string substr, std::string replacement) {
+    size_t i=0;
+    for (i=src.find(substr, i); i!=std::string::npos; i=src.find(substr, i)) {
+        src.replace(i, substr.size(), replacement);
+        i += replacement.size();
+    }
+}
 
 // Is this character a valid lisp symbol character
 bool is_symbol(char ch) {
@@ -165,14 +177,14 @@ public:
     ////////////////////////////////////////////////////////////////////////////////
 
     // Constructs a unit value
-    inline Value() : type(UNIT) {}
+    Value() : type(UNIT) {}
 
     // Constructs an integer
-    inline Value(int i) : type(INT) { stack_data.i = i; }
+    Value(int i) : type(INT) { stack_data.i = i; }
     // Constructs a floating point value
-    inline Value(double f) : type(FLOAT) { stack_data.f = f; }
+    Value(double f) : type(FLOAT) { stack_data.f = f; }
     // Constructs a list
-    inline Value(std::vector<Value> list) : type(LIST), list(list) {}
+    Value(std::vector<Value> list) : type(LIST), list(list) {}
 
     // Construct a quoted value
     static Value quote(Value quoted) {
@@ -222,7 +234,7 @@ public:
     }
 
     // Construct a builtin function
-    inline Value(std::string name, Builtin b) : type(BUILTIN) {
+    Value(std::string name, Builtin b) : type(BUILTIN) {
         // Store the name of the builtin function in the str member
         // to save memory, and use the builtin function slot in the union
         // to store the function pointer.
@@ -267,7 +279,7 @@ public:
     }
 
     // Is this a builtin function?
-    inline bool is_builtin() {
+    bool is_builtin() {
         return type == BUILTIN;
     }
 
@@ -281,22 +293,22 @@ public:
     }
 
     // Get the "truthy" boolean value of this value.
-    inline bool as_bool() const {
+    bool as_bool() const {
         return *this != Value(0);
     }
 
     // Get this item's integer value
-    inline int as_int() const {
+    int as_int() const {
         return cast_to_int().stack_data.i;
     }
 
     // Get this item's floating point value
-    inline double as_float() const {
+    double as_float() const {
         return cast_to_int().stack_data.f;
     }
 
     // Get this item's string value
-    inline std::string as_string() const {
+    std::string as_string() const {
         // If this item is not a string, throw a cast error.
         if (type != STRING)
             throw Error(*this, Environment(), BAD_CAST);
@@ -304,7 +316,7 @@ public:
     }
 
     // Get this item's atom value
-    inline std::string as_atom() const {
+    std::string as_atom() const {
         // If this item is not an atom, throw a cast error.
         if (type != ATOM)
             throw Error(*this, Environment(), BAD_CAST);
@@ -312,7 +324,7 @@ public:
     }
 
     // Get this item's list value
-    inline std::vector<Value> as_list() const {
+    std::vector<Value> as_list() const {
         // If this item is not a list, throw a cast error.
         if (type != LIST)
             throw Error(*this, Environment(), BAD_CAST);
@@ -408,7 +420,7 @@ public:
         }
     }
     
-    inline bool operator!=(Value other) const {
+    bool operator!=(Value other) const {
         return !(*this == other);
     }
 
@@ -432,15 +444,15 @@ public:
     /// ORDERING OPERATIONS ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
 
-    inline bool operator>=(Value other) const {
+    bool operator>=(Value other) const {
         return !(*this < other);
     }
     
-    inline bool operator<=(Value other) const {
+    bool operator<=(Value other) const {
         return (*this == other) || (*this < other);
     }
     
-    inline bool operator>(Value other) const {
+    bool operator>(Value other) const {
         return !(*this <= other);
     }
 
@@ -750,7 +762,7 @@ public:
         }
     }
 
-    inline friend std::ostream &operator<<(std::ostream &os, Value const &v) {
+    friend std::ostream &operator<<(std::ostream &os, Value const &v) {
         return os << v.display();
     }
 
@@ -791,13 +803,18 @@ Error::~Error() {
     delete cause;
 }
 
-inline std::string Error::description() {
+std::string Error::description() {
     return "error: the expression `" + cause->debug() + "` failed in scope " + to_string(env) + " with message \"" + msg + "\"";
 }
 
-
 void Environment::combine(Environment const &other) {
-    defs.insert(other.defs.begin(), other.defs.end());
+    // Normally, I would use the `insert` method of the `map` class,
+    // but it doesn't overwrite previously declared values for keys.
+    std::map<std::string, Value>::const_iterator itr = other.defs.begin();
+    for (; itr!=other.defs.end(); itr++) {
+        // Iterate through the keys and assign each value.
+        defs[itr->first] = itr->second;
+    }
 }
 
 std::ostream &operator<<(std::ostream &os, Environment const &e) {
@@ -809,7 +826,7 @@ std::ostream &operator<<(std::ostream &os, Environment const &e) {
     return os << "}";
 }
 
-inline void Environment::set(std::string name, Value value) {
+void Environment::set(std::string name, Value value) {
     defs[name] = value;
 }
 
@@ -819,25 +836,37 @@ Value Value::apply(std::vector<Value> args, Environment &env) {
     std::vector<Value> params;
     switch (type) {
     case LAMBDA:
+        // Get the list of parameter atoms
         params = list[0].list;
-        if (params.size() > args.size())
-            throw Error(Value(args), env, TOO_FEW_ARGS);
-        else if (params.size() < args.size())
-            throw Error(Value(args), env, TOO_MANY_ARGS);
+        if (params.size() != args.size())
+            throw Error(Value(args), env, args.size() > params.size()?
+                TOO_MANY_ARGS : TOO_FEW_ARGS
+            );
 
+        // Get the captured scope from the lambda
         e = lambda_scope;
+        // And make this scope the parent scope
         e.set_parent_scope(&env);
 
+        // Iterate through the list of parameters and
+        // insert the arguments into the scope.
         for (size_t i=0; i<params.size(); i++) {
             if (params[i].type != ATOM) 
                 throw Error(*this, env, INVALID_LAMBDA);
+            // Set the parameter name into the scope.
             e.set(params[i].str, args[i]);
         }
 
+        // Evaluate the function body with the function scope
         return list[1].eval(e);
     case BUILTIN:
+        // Here, we call the builtin function with the current scope.
+        // This allows us to write special forms without syntactic sugar.
+        // For functions that are not special forms, we just evaluate
+        // the arguments before we run the function.
         return (stack_data.b)(args, env);
     default:
+        // We can only call lambdas and builtins
         throw Error(*this, env, CALL_NON_FUNCTION);
     }
 }
@@ -877,14 +906,16 @@ Value Value::eval(Environment &env) {
     }
 }
 
-inline void skip_whitespace(std::string &s, int &ptr) {
+void skip_whitespace(std::string &s, int &ptr) {
     while (isspace(s[ptr])) { ptr++; }
 }
 
+// Parse a single value and increment the pointer
+// to the beginning of the next value to parse.
 Value parse(std::string &s, int &ptr) {
     skip_whitespace(s, ptr);
 
-    if (s[ptr] == ';') {
+    while (s[ptr] == ';') {
         // If this is a comment
         int save_ptr = ptr;
         while (s[save_ptr] != '\n' && save_ptr < int(s.length())) { save_ptr++; }
@@ -943,8 +974,20 @@ Value parse(std::string &s, int &ptr) {
         std::string x = s.substr(ptr+1, n-1);
         ptr += n+1;
         skip_whitespace(s, ptr);
-        while (x.find("\\\"") != std::string::npos)
-            x.replace(x.find("\\\""), 2, "\"");
+
+        // Iterate over the characters in the string, and
+        // replace escaped characters with their intended values.
+        for (size_t i=0; i<x.size(); i++) {
+            if (x[i] == '\\' && x[i+1] == '\\')
+                x.replace(i, 2, "\\");
+            else if (x[i] == '\\' && x[i+1] == '"')
+                x.replace(i, 2, "\"");
+            else if (x[i] == '\\' && x[i+1] == 'n')
+                x.replace(i, 2, "\n");
+            else if (x[i] == '\\' && x[i+1] == 't')
+                x.replace(i, 2, "\t");
+        }
+
         return Value::string(x);
     } else if (s[ptr] == '@') {
         ptr++;
@@ -967,34 +1010,53 @@ Value parse(std::string &s, int &ptr) {
     }
 }
 
+// Parse an entire program and get its list of expressions.
 std::vector<Value> parse(std::string s) {
     int i=0, last_i=-1;
     std::vector<Value> result;
+    // While the parser is making progress (while the pointer is moving right)
+    // and the pointer hasn't reached the end of the string,
     while (last_i != i && i <= int(s.length()-1)) {
+        // Parse another expression and add it to the list.
         last_i = i;
         result.push_back(parse(s, i));
     }
 
+    // If the whole string wasn't parsed, the program must be bad.
     if (i < int(s.length()))
         throw std::runtime_error(MALFORMED_PROGRAM);
 
+    // Return the list of values parsed.
     return result;
 }
 
+// Execute code in an environment
 Value run(std::string code, Environment &env) {
+    // Parse the code
     std::vector<Value> parsed = parse(code);
+    // Iterate over the expressions and evaluate them
+    // in this environment.
     for (size_t i=0; i<parsed.size()-1; i++)
         parsed[i].eval(env);
 
+    // Return the result of the last expression.
     return parsed[parsed.size()-1].eval(env);
 }
 
+// This namespace contains all the definitions of builtin functions
 namespace builtin {
-    inline void eval_args(std::vector<Value> &args, Environment &env) {
+    // This function is NOT a builtin function, but it is used
+    // by almost all of them.
+    //
+    // Special forms are just builtin functions that don't evaluate
+    // their arguments. To make a regular builtin that evaluates its
+    // arguments, we just call this function in our builtin definition.
+    void eval_args(std::vector<Value> &args, Environment &env) {
         for (size_t i=0; i<args.size(); i++)
             args[i] = args[i].eval(env);
     }
 
+    // Create a lambda function (SPECIAL FORM)
     Value lambda(std::vector<Value> args, Environment &env) {
         if (args.size() < 2)
             throw Error(Value("lambda", lambda), env, TOO_FEW_ARGS);
@@ -1005,6 +1067,7 @@ namespace builtin {
         return Value(args[0].as_list(), args[1], env);
     }
 
+    // if-else (SPECIAL FORM)
     Value if_then_else(std::vector<Value> args, Environment &env) {
         if (args.size() != 3)
             throw Error(Value("if", if_then_else), env, args.size() > 3? TOO_MANY_ARGS : TOO_FEW_ARGS);
@@ -1013,6 +1076,7 @@ namespace builtin {
         else return args[2].eval(env);
     }
 
+    // Define a variable with a value (SPECIAL FORM)
     Value define(std::vector<Value> args, Environment &env) {
         if (args.size() != 2)
             throw Error(Value("define", define), env, args.size() > 2? TOO_MANY_ARGS : TOO_FEW_ARGS);
@@ -1022,6 +1086,7 @@ namespace builtin {
         return result;
     }
 
+    // Define a function with parameters and a result expression (SPECIAL FORM)
     Value defun(std::vector<Value> args, Environment &env) {
         if (args.size() != 3)
             throw Error(Value("defun", defun), env, args.size() > 3? TOO_MANY_ARGS : TOO_FEW_ARGS);
@@ -1034,6 +1099,34 @@ namespace builtin {
         return f;
     }
 
+    // Loop over a list of expressions with a condition (SPECIAL FORM)
+    Value while_loop(std::vector<Value> args, Environment &env) {
+        Value acc;
+        while (args[0].eval(env).as_bool()) {
+            for (size_t i=1; i<args.size()-1; i++)
+                args[i].eval(env);
+            acc = args[args.size()-1].eval(env);
+        }
+        return acc;
+    }
+
+    // Iterate through a list of values in a list (SPECIAL FORM)
+    Value for_loop(std::vector<Value> args, Environment &env) {
+        Value acc;
+        std::vector<Value> list = args[1].eval(env).as_list();
+
+        for (size_t i=0; i<list.size(); i++) {
+            env.set(args[0].as_atom(), list[i]);
+
+            for (size_t j=1; j<args.size()-1; j++)
+                args[j].eval(env);
+            acc = args[args.size()-1].eval(env);
+        }
+
+        return acc;
+    }
+
+    // Evaluate a block of expressions in the current environment (SPECIAL FORM)
     Value do_block(std::vector<Value> args, Environment &env) {
         Value acc;
         for (size_t i=0; i<args.size(); i++)
@@ -1041,6 +1134,7 @@ namespace builtin {
         return acc;
     }
 
+    // Evaluate a block of expressions in a new environment (SPECIAL FORM)
     Value scope(std::vector<Value> args, Environment &env) {
         Environment e = env;
         Value acc;
@@ -1049,6 +1143,7 @@ namespace builtin {
         return acc;
     }
 
+    // Quote an expression (SPECIAL FORM)
     Value quote(std::vector<Value> args, Environment &env) {
         std::vector<Value> v;
         for (size_t i=0; i<args.size(); i++)
@@ -1057,6 +1152,7 @@ namespace builtin {
     }
 
     #ifdef USE_STD
+    // Exit the program with an integer code
     Value exit(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1065,6 +1161,7 @@ namespace builtin {
         return Value();
     }
 
+    // Print several values and return the last one
     Value print(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1083,6 +1180,7 @@ namespace builtin {
         return acc;
     }
 
+    // Get user input with an optional prompt
     Value input(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1098,6 +1196,19 @@ namespace builtin {
         return Value::string(s);
     }
 
+    // Get a random number between two numbers inclusively
+    Value random(std::vector<Value> args, Environment &env) {
+        // Is not a special form, so we can evaluate our args.
+        eval_args(args, env);
+
+        if (args.size() != 2)
+            throw Error(Value("random", random), env, args.size() > 2? TOO_MANY_ARGS : TOO_FEW_ARGS);
+
+        int low = args[0].as_int(), high = args[1].as_int();
+        return Value(rand()%(high-low+1) + low);
+    }
+
+    // Get the contents of a file
     Value read_file(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1109,6 +1220,7 @@ namespace builtin {
         return Value::string(read_file_contents(args[0].as_string()));
     }
 
+    // Write a string to a file
     Value write_file(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1117,12 +1229,15 @@ namespace builtin {
             throw Error(Value("write-file", write_file), env, args.size() > 1? TOO_MANY_ARGS : TOO_FEW_ARGS);
 
         std::ofstream f;
+        // The first argument is the file name
         f.open(args[0].as_string().c_str());
+        // The second argument is the contents of the file to write
         Value result = Value((f << args[1].as_string())? 1 : 0);
         f.close();
         return result;
     }
 
+    // Read a file and execute its code
     Value include(std::vector<Value> args, Environment &env) {
         // Import is technically not a special form, it's more of a macro.
         // We can evaluate our arguments.
@@ -1138,7 +1253,8 @@ namespace builtin {
     }
     #endif
 
-    inline Value eval(std::vector<Value> args, Environment &env) {
+    // Evaluate a value as code
+    Value eval(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1147,13 +1263,15 @@ namespace builtin {
         else return args[0].eval(env);
     }
 
-    inline Value list(std::vector<Value> args, Environment &env) {
+    // Create a list of values
+    Value list(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
         
         return Value(args);
     }
 
+    // Sum multiple values
     Value sum(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1167,7 +1285,8 @@ namespace builtin {
         return acc;
     }
 
-    inline Value subtract(std::vector<Value> args, Environment &env) {
+    // Subtract two values
+    Value subtract(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1176,6 +1295,7 @@ namespace builtin {
         return args[0] - args[1];
     }
 
+    // Multiply several values
     Value product(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1189,7 +1309,8 @@ namespace builtin {
         return acc;
     }
 
-    inline Value divide(std::vector<Value> args, Environment &env) {
+    // Divide two values
+    Value divide(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1198,7 +1319,8 @@ namespace builtin {
         return args[0] / args[1];
     }
 
-    inline Value remainder(std::vector<Value> args, Environment &env) {
+    // Get the remainder of values
+    Value remainder(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1207,7 +1329,8 @@ namespace builtin {
         return args[0] % args[1];
     }
 
-    inline Value eq(std::vector<Value> args, Environment &env) {
+    // Are two values equal?
+    Value eq(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1216,7 +1339,8 @@ namespace builtin {
         return Value(int(args[0] == args[1]));
     }
 
-    inline Value neq(std::vector<Value> args, Environment &env) {
+    // Are two values not equal?
+    Value neq(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1225,7 +1349,8 @@ namespace builtin {
         return Value(int(args[0] != args[1]));
     }
 
-    inline Value greater(std::vector<Value> args, Environment &env) {
+    // Is one number greater than another?
+    Value greater(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1234,7 +1359,8 @@ namespace builtin {
         return Value(int(args[0] > args[1]));
     }
 
-    inline Value less(std::vector<Value> args, Environment &env) {
+    // Is one number less than another?
+    Value less(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1243,7 +1369,8 @@ namespace builtin {
         return Value(int(args[0] < args[1]));
     }
 
-    inline Value greater_eq(std::vector<Value> args, Environment &env) {
+    // Is one number greater than or equal to another?
+    Value greater_eq(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1252,7 +1379,8 @@ namespace builtin {
         return Value(int(args[0] >= args[1]));
     }
 
-    inline Value less_eq(std::vector<Value> args, Environment &env) {
+    // Is one number less than or equal to another?
+    Value less_eq(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
@@ -1261,6 +1389,7 @@ namespace builtin {
         return Value(int(args[0] <= args[1]));
     }
 
+    // Get the type name of a value
     Value get_type_name(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1271,7 +1400,7 @@ namespace builtin {
         return Value::string(args[0].get_type_name());
     }
 
-
+    // Cast an item to a float
     Value cast_to_float(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1281,6 +1410,7 @@ namespace builtin {
         return args[0].cast_to_float();
     }
 
+    // Cast an item to an int
     Value cast_to_int(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1290,6 +1420,70 @@ namespace builtin {
         return args[0].cast_to_int();
     }
 
+    // Index a list
+    Value index(std::vector<Value> args, Environment &env) {
+        // Is not a special form, so we can evaluate our args.
+        eval_args(args, env);
+
+        if (args.size() != 2)
+            throw Error(Value("index", index), env, args.size() > 2? TOO_MANY_ARGS : TOO_FEW_ARGS);
+
+        std::vector<Value> list = args[0].as_list();
+        int i = args[1].as_int();
+        if (list.empty() || i >= list.size())
+            throw Error(list, env, INDEX_OUT_OF_RANGE);
+
+        return list[i];
+    }
+
+    // Insert a value into a list
+    Value insert(std::vector<Value> args, Environment &env) {
+        // Is not a special form, so we can evaluate our args.
+        eval_args(args, env);
+
+        if (args.size() != 3)
+            throw Error(Value("insert", insert), env, args.size() > 3? TOO_MANY_ARGS : TOO_FEW_ARGS);
+
+        std::vector<Value> list = args[0].as_list();
+        int i = args[1].as_int();
+        if (i > list.size())
+            throw Error(list, env, INDEX_OUT_OF_RANGE);
+
+        list.insert(list.begin() + args[1].as_int(), args[2]);
+        return Value(list);
+    }
+
+    // Remove a value at an index from a list
+    Value remove(std::vector<Value> args, Environment &env) {
+        // Is not a special form, so we can evaluate our args.
+        eval_args(args, env);
+
+        if (args.size() != 2)
+            throw Error(Value("remove", remove), env, args.size() > 2? TOO_MANY_ARGS : TOO_FEW_ARGS);
+
+        std::vector<Value> list = args[0].as_list();
+        int i = args[1].as_int();
+        if (list.empty() || i >= list.size())
+            throw Error(list, env, INDEX_OUT_OF_RANGE);
+
+        list.erase(list.begin() + i);
+        return Value(list);
+    }
+
+    // Get the length of a list
+    Value len(std::vector<Value> args, Environment &env) {
+        // Is not a special form, so we can evaluate our args.
+        eval_args(args, env);
+
+        if (args.size() != 1)
+            throw Error(Value("len", len), env, args.size() > 1?
+                TOO_MANY_ARGS : TOO_FEW_ARGS
+            );
+        
+        return Value(int(args[0].as_list().size()));
+    }
+
+    // Add an item to the end of a list
     Value push(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
@@ -1316,7 +1510,11 @@ namespace builtin {
 
         if (args.size() != 1)
             throw Error(Value("head", head), env, args.size() > 1? TOO_MANY_ARGS : TOO_FEW_ARGS);
-        return args[0].as_list()[0];
+        std::vector<Value> list = args[0].as_list();
+        if (list.empty())
+            throw Error(Value("head", head), env, INDEX_OUT_OF_RANGE);
+
+        return list[0];
     }
 
     Value tail(std::vector<Value> args, Environment &env) {
@@ -1326,11 +1524,12 @@ namespace builtin {
         if (args.size() != 1)
             throw Error(Value("tail", tail), env, args.size() > 1? TOO_MANY_ARGS : TOO_FEW_ARGS);
 
-        std::vector<Value> v;
-        for (size_t i=1; i<args[0].as_list().size(); i++) {
-            v.push_back(args[0].as_list()[i]);
-        }
-        return Value(v);
+        std::vector<Value> result, list = args[0].as_list();
+
+        for (size_t i = 1; i<list.size(); i++)
+            result.push_back(list[i]);
+        
+        return Value(result);
     }
 
     Value parse(std::vector<Value> args, Environment &env) {
@@ -1347,6 +1546,18 @@ namespace builtin {
         //     return parsed[0];
         // else return Value(parsed);
         return Value(parsed);
+    }
+
+    Value replace(std::vector<Value> args, Environment &env) {
+        // Is not a special form, so we can evaluate our args.
+        eval_args(args, env);
+
+        if (args.size() != 3)
+            throw Error(Value("replace", replace), env, args.size() > 3? TOO_MANY_ARGS : TOO_FEW_ARGS);
+
+        std::string src = args[0].as_string();
+        replace_substring(src, args[1].as_string(), args[2].as_string());
+        return Value::string(src);
     }
 
     Value display(std::vector<Value> args, Environment &env) {
@@ -1490,11 +1701,13 @@ Value Environment::get(std::string name) const {
     if (name == "parse") return Value("parse", builtin::parse);
 
     // Special forms
-    if (name == "do")    return Value("do",    builtin::do_block);
-    if (name == "if")    return Value("if",    builtin::if_then_else);
-    if (name == "scope") return Value("scope", builtin::scope);
-    if (name == "quote") return Value("quote", builtin::quote);
-    if (name == "defun") return Value("defun", builtin::defun);
+    if (name == "do")     return Value("do",     builtin::do_block);
+    if (name == "if")     return Value("if",     builtin::if_then_else);
+    if (name == "for")    return Value("for",    builtin::for_loop);
+    if (name == "while")  return Value("while",  builtin::while_loop);
+    if (name == "scope")  return Value("scope",  builtin::scope);
+    if (name == "quote")  return Value("quote",  builtin::quote);
+    if (name == "defun")  return Value("defun",  builtin::defun);
     if (name == "define") return Value("define", builtin::define);
     if (name == "lambda") return Value("lambda", builtin::lambda);
 
@@ -1514,14 +1727,20 @@ Value Environment::get(std::string name) const {
     if (name == "%") return Value("%", builtin::remainder);
 
     // List operations
-    if (name == "list")  return Value("list",  builtin::list);
-    if (name == "push")  return Value("push",  builtin::push);
-    if (name == "pop")   return Value("pop",   builtin::pop);
-    if (name == "head")  return Value("head",  builtin::head);
-    if (name == "tail")  return Value("tail",  builtin::tail);
-    if (name == "first") return Value("first", builtin::head);
-    if (name == "last")  return Value("last",  builtin::pop);
-    if (name == "range") return Value("range",  builtin::range);
+    if (name == "list")   return Value("list",   builtin::list);
+    if (name == "insert") return Value("insert", builtin::insert);
+    if (name == "index")  return Value("index",  builtin::index);
+    if (name == "remove") return Value("remove", builtin::remove);
+
+    if (name == "len")    return Value("len",   builtin::len);
+
+    if (name == "push")   return Value("push",  builtin::push);
+    if (name == "pop")    return Value("pop",   builtin::pop);
+    if (name == "head")   return Value("head",  builtin::head);
+    if (name == "tail")   return Value("tail",  builtin::tail);
+    if (name == "first")  return Value("first", builtin::head);
+    if (name == "last")   return Value("last",  builtin::pop);
+    if (name == "range")  return Value("range", builtin::range);
 
     // Functional operations
     if (name == "map")    return Value("map",    builtin::map_list);
@@ -1530,17 +1749,19 @@ Value Environment::get(std::string name) const {
 
     // IO operations
     #ifdef USE_STD
-    if (name == "exit")   return Value("exit",  builtin::exit);
-    if (name == "quit")   return Value("quit",  builtin::exit);
-    if (name == "print")  return Value("print", builtin::print);
-    if (name == "input")  return Value("input", builtin::input);
-    if (name == "include") return Value("include", builtin::include);
+    if (name == "exit")       return Value("exit",       builtin::exit);
+    if (name == "quit")       return Value("quit",       builtin::exit);
+    if (name == "print")      return Value("print",      builtin::print);
+    if (name == "input")      return Value("input",      builtin::input);
+    if (name == "random")     return Value("random",     builtin::random);
+    if (name == "include")    return Value("include",    builtin::include);
     if (name == "read-file")  return Value("read-file",  builtin::read_file);
     if (name == "write-file") return Value("write-file", builtin::write_file);
     #endif
 
-    // Formatting operations
+    // String operations
     if (name == "debug")   return Value("debug",   builtin::debug);
+    if (name == "replace") return Value("replace", builtin::replace);
     if (name == "display") return Value("display", builtin::display);
     
     // Casting operations
@@ -1563,22 +1784,30 @@ Value Environment::get(std::string name) const {
 
 int main(int argc, const char **argv) {
     Environment env;
+    std::vector<Value> args;
+    for (int i=0; i<argc; i++)
+        args.push_back(Value::string(argv[i]));
+    env.set("cmd-args", Value(args));
 
+    #ifdef USE_STD
+    srand(time(NULL));
     try {
         if (argc == 1 || (argc == 2 && std::string(argv[1]) == "-i"))
             repl(env);
-        else if (argc == 3 && std::string(argv[1]) == "-f")
-            run(read_file_contents(argv[2]), env);
         else if (argc == 3 && std::string(argv[1]) == "-c")
             run(argv[2], env);
-        #ifdef USE_STD
+        else if (argc == 3 && std::string(argv[1]) == "-f")
+            run(read_file_contents(argv[2]), env);
         else std::cerr << "invalid arguments" << std::endl;
-        #endif
     } catch (Error &e) {
         std::cerr << e.description() << std::endl;
     } catch (std::runtime_error &e) {
         std::cerr << e.what() << std::endl;
     }
+    #else
+    if (argc == 3 && std::string(argv[1]) == "-c")
+        run(argv[2], env);
+    #endif
 
     return 0;
 }
