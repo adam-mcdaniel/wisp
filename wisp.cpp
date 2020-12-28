@@ -882,7 +882,7 @@ Value Value::eval(Environment &env) {
         case ATOM:
             return env.get(str);
         case LIST:
-            if (list.size() < 1)
+            if (list.empty())
                 throw Error(*this, env, EVAL_EMPTY_LIST);
 
             args = std::vector<Value>(list.begin() + 1, list.end());
@@ -922,12 +922,12 @@ Value parse(std::string &s, int &ptr) {
         s.erase(ptr, save_ptr - ptr);
         skip_whitespace(s, ptr);
 
-        if (s.substr(ptr, s.length()-ptr-1) == "")
+        if (s.substr(ptr, s.length()-ptr-1).empty())
             return Value();
     }
 
 
-    if (s == "") {
+    if (s.empty()) {
         return Value();
     } else if (s[ptr] == '\'') {
         // If this is a quote
@@ -1157,7 +1157,7 @@ namespace builtin {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
-        std::exit(args.size() < 1? 0 : args[0].cast_to_int().as_int());
+        std::exit(args.empty()? 0 : args[0].cast_to_int().as_int());
         return Value();
     }
 
@@ -1166,7 +1166,7 @@ namespace builtin {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
-        if (args.size() < 1)
+        if (args.empty())
             throw Error(Value("print", print), env, TOO_FEW_ARGS);
 
         Value acc;
@@ -1488,7 +1488,7 @@ namespace builtin {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
 
-        if (args.size() == 0)
+        if (args.empty())
             throw Error(Value("push", push), env, TOO_FEW_ARGS);
         for (size_t i=1; i<args.size(); i++)
             args[0].push(args[i]);
@@ -1664,7 +1664,7 @@ void repl(Environment &env) {
             f.open(input.c_str(), std::ofstream::out);
             f << code;
             f.close();
-        } else if (input != "") {
+        } else if (!input.empty()) {
             try {
                 tmp = run(input, env);
                 std::cout << " => " << tmp.debug() << std::endl;
