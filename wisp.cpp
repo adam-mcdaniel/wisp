@@ -226,10 +226,10 @@ public:
 
         // Lambdas capture only variables that they know they will use.
         std::vector<std::string> used_atoms = ret.get_used_atoms();
-        for (size_t i=0; i<used_atoms.size(); i++) {
+        for (auto & used_atom : used_atoms) {
             // If the environment has a symbol that this lambda uses, capture it.
-            if (env.has(used_atoms[i]))
-                lambda_scope.set(used_atoms[i], env.get(used_atoms[i]));
+            if (env.has(used_atom))
+                lambda_scope.set(used_atom, env.get(used_atom));
         }
     }
 
@@ -266,9 +266,9 @@ public:
             case LIST:
                 // If this is a list, add each of the atoms used in all
                 // of the elements in the list.
-                for (size_t i=0; i<list.size(); i++) {
+                for (auto & i : list) {
                     // Get the atoms used in the element
-                    tmp = list[i].get_used_atoms();
+                    tmp = i.get_used_atoms();
                     // Add the used atoms to the current list of used atoms
                     result.insert(result.end(), tmp.begin(), tmp.end());
                 }
@@ -517,8 +517,8 @@ public:
                     // Maintain the value that will be returned
                     Value result = *this;
                     // Add each item in the other list to the end of this list
-                    for (size_t i=0; i<other.list.size(); i++)
-                        result.push(other.list[i]);
+                    for (auto & i : other.list)
+                        result.push(i);
                     return result;
 
                 } else throw Error(*this, Environment(), INVALID_BIN_OP);
@@ -733,9 +733,9 @@ public:
             case FLOAT:
                 return to_string(stack_data.f);
             case STRING:
-                for (size_t i=0; i<str.length(); i++) {
-                    if (str[i] == '"') result += "\\\"";
-                    else result.push_back(str[i]);
+                for (char i : str) {
+                    if (i == '"') result += "\\\"";
+                    else result.push_back(i);
                 }
                 return "\"" + result + "\"";
             case LAMBDA:
@@ -893,8 +893,8 @@ Value Value::eval(Environment &env) {
             function = list[0].eval(env);
 
             if (!function.is_builtin())
-                for (size_t i=0; i<args.size(); i++)
-                    args[i] = args[i].eval(env);
+                for (auto & arg : args)
+                    arg = arg.eval(env);
 
             return function.apply(
                     args,
@@ -1052,8 +1052,8 @@ namespace builtin {
     // their arguments. To make a regular builtin that evaluates its
     // arguments, we just call this function in our builtin definition.
     void eval_args(std::vector<Value> &args, Environment &env) {
-        for (size_t i=0; i<args.size(); i++)
-            args[i] = args[i].eval(env);
+        for (auto & arg : args)
+            arg = arg.eval(env);
     }
 
     // Create a lambda function (SPECIAL FORM)
@@ -1115,8 +1115,8 @@ namespace builtin {
         Value acc;
         std::vector<Value> list = args[1].eval(env).as_list();
 
-        for (size_t i=0; i<list.size(); i++) {
-            env.set(args[0].as_atom(), list[i]);
+        for (auto & i : list) {
+            env.set(args[0].as_atom(), i);
 
             for (size_t j=1; j<args.size()-1; j++)
                 args[j].eval(env);
@@ -1129,8 +1129,8 @@ namespace builtin {
     // Evaluate a block of expressions in the current environment (SPECIAL FORM)
     Value do_block(std::vector<Value> args, Environment &env) {
         Value acc;
-        for (size_t i=0; i<args.size(); i++)
-            acc = args[i].eval(env);
+        for (auto & arg : args)
+            acc = arg.eval(env);
         return acc;
     }
 
@@ -1138,16 +1138,16 @@ namespace builtin {
     Value scope(std::vector<Value> args, Environment &env) {
         Environment e = env;
         Value acc;
-        for (size_t i=0; i<args.size(); i++)
-            acc = args[i].eval(e);
+        for (auto & arg : args)
+            acc = arg.eval(e);
         return acc;
     }
 
     // Quote an expression (SPECIAL FORM)
     Value quote(std::vector<Value> args, Environment &env) {
         std::vector<Value> v;
-        for (size_t i=0; i<args.size(); i++)
-            v.push_back(args[i]);
+        for (const auto & arg : args)
+            v.push_back(arg);
         return Value(v);
     }
 
@@ -1585,8 +1585,8 @@ namespace builtin {
         eval_args(args, env);
 
         std::vector<Value> result, l=args[1].as_list(), tmp;
-        for (size_t i=0; i<l.size(); i++) {
-            tmp.push_back(l[i]);
+        for (const auto & i : l) {
+            tmp.push_back(i);
             result.push_back(args[0].apply(tmp, env));
             tmp.clear();
         }
@@ -1598,10 +1598,10 @@ namespace builtin {
         eval_args(args, env);
 
         std::vector<Value> result, l=args[1].as_list(), tmp;
-        for (size_t i=0; i<l.size(); i++) {
-            tmp.push_back(l[i]);
+        for (const auto & i : l) {
+            tmp.push_back(i);
             if (args[0].apply(tmp, env).as_bool())
-                result.push_back(l[i]);
+                result.push_back(i);
             tmp.clear();
         }
         return Value(result);
@@ -1613,9 +1613,9 @@ namespace builtin {
 
         std::vector<Value> l=args[2].as_list(), tmp;
         Value acc = args[1];
-        for (size_t i=0; i<l.size(); i++) {
+        for (const auto & i : l) {
             tmp.push_back(acc);
-            tmp.push_back(l[i]);
+            tmp.push_back(i);
             acc = args[0].apply(tmp, env);
             tmp.clear();
         }
