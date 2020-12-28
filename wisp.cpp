@@ -126,11 +126,11 @@ public:
     // have this atom in scope?
     // This is only used to determine which atoms to capture when
     // creating a lambda function.
-    bool has(std::string name) const;
+    bool has(const std::string& name) const;
     // Get the value associated with this name in this scope
-    Value get(std::string name) const;
+    Value get(const std::string& name) const;
     // Set the value associated with this name in this scope
-    void set(std::string name, Value value);
+    void set(const std::string& name, Value value);
 
     void combine(Environment const &other);
 
@@ -187,7 +187,7 @@ public:
     Value(std::vector<Value> list) : type(LIST), list(list) {}
 
     // Construct a quoted value
-    static Value quote(Value quoted) {
+    static Value quote(const Value& quoted) {
         Value result;
         result.type = QUOTE;
 
@@ -332,7 +332,7 @@ public:
     }
 
     // Push an item to the end of this list
-    void push(Value val) {
+    void push(const Value& val) {
         // If this item is not a list, you cannot push to it.
         // Throw an error.
         if (type != LIST)
@@ -444,19 +444,19 @@ public:
     /// ORDERING OPERATIONS ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
 
-    bool operator>=(Value other) const {
+    bool operator>=(const Value& other) const {
         return !(*this < other);
     }
 
-    bool operator<=(Value other) const {
+    bool operator<=(const Value& other) const {
         return (*this == other) || (*this < other);
     }
 
-    bool operator>(Value other) const {
+    bool operator>(const Value& other) const {
         return !(*this <= other);
     }
 
-    bool operator<(Value other) const {
+    bool operator<(const Value& other) const {
         // Other type must be a float or an int
         if (other.type != FLOAT && other.type != INT)
             throw Error(*this, Environment(), INVALID_BIN_OP);
@@ -826,7 +826,7 @@ std::ostream &operator<<(std::ostream &os, Environment const &e) {
     return os << "}";
 }
 
-void Environment::set(std::string name, Value value) {
+void Environment::set(const std::string& name, Value value) {
     defs[name] = value;
 }
 
@@ -1680,7 +1680,7 @@ void repl(Environment &env) {
 }
 
 // Does this environment, or its parent environment, have a variable?
-bool Environment::has(std::string name) const {
+bool Environment::has(const std::string& name) const {
     // Find the value in the map
     std::map<std::string, Value>::const_iterator itr = defs.find(name);
     if (itr != defs.end())
@@ -1694,7 +1694,7 @@ bool Environment::has(std::string name) const {
 }
 
 // Get the value associated with this name in this scope
-Value Environment::get(std::string name) const {
+Value Environment::get(const std::string& name) const {
     // Meta operations
     if (name == "eval")  return Value("eval",  builtin::eval);
     if (name == "type")  return Value("type",  builtin::get_type_name);
