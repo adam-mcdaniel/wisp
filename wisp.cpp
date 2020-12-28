@@ -120,7 +120,7 @@ class Value;
 class Environment {
 public:
     // Default constructor
-    Environment() : parent_scope(NULL) {}
+    Environment() : parent_scope(nullptr) {}
 
     // Does this environment, or its parent environment,
     // have this atom in scope?
@@ -1686,7 +1686,7 @@ bool Environment::has(std::string name) const {
     if (itr != defs.end())
         // If it was found
         return true;
-    else if (parent_scope != NULL)
+    else if (parent_scope != nullptr)
         // If it was not found in the current environment,
         // try to find it in the parent environment
         return parent_scope->has(name);
@@ -1773,7 +1773,7 @@ Value Environment::get(std::string name) const {
 
     std::map<std::string, Value>::const_iterator itr = defs.find(name);
     if (itr != defs.end()) return itr->second;
-    else if (parent_scope != NULL) {
+    else if (parent_scope != nullptr) {
         itr = parent_scope->defs.find(name);
         if (itr != parent_scope->defs.end()) return itr->second;
         else return parent_scope->get(name);
@@ -1790,7 +1790,7 @@ int main(int argc, const char **argv) {
     env.set("cmd-args", Value(args));
 
 #ifdef USE_STD
-    srand(time(NULL));
+    srand(time(nullptr));
     try {
         if (argc == 1 || (argc == 2 && std::string(argv[1]) == "-i"))
             repl(env);
