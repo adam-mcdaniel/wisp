@@ -22,7 +22,7 @@
 #include <fstream>
 #include <ctime>
 
-std::string read_file_contents(std::string filename) {
+std::string read_file_contents(const std::string& filename) {
     std::ifstream f;
     f.open(filename.c_str());
     if (!f)
@@ -33,7 +33,7 @@ std::string read_file_contents(std::string filename) {
     contents.reserve(f.tellg());
     f.seekg(0, std::ios::beg);
     contents.assign(std::istreambuf_iterator<char>(f),
-                std::istreambuf_iterator<char>());
+                    std::istreambuf_iterator<char>());
     f.close();
 
     return contents;
@@ -95,7 +95,7 @@ std::string read_file_contents(std::string filename) {
 #define to_string( x ) static_cast<std::ostringstream&>((std::ostringstream() << std::dec << x )).str()
 
 // Replace a substring with a replacement string in a source string
-void replace_substring(std::string &src, std::string substr, std::string replacement) {
+void replace_substring(std::string &src, const std::string& substr, std::string replacement) {
     size_t i=0;
     for (i=src.find(substr, i); i!=std::string::npos; i=src.find(substr, i)) {
         src.replace(i, substr.size(), replacement);
@@ -126,18 +126,18 @@ public:
     // have this atom in scope?
     // This is only used to determine which atoms to capture when
     // creating a lambda function.
-    bool has(std::string name) const;
+    bool has(const std::string& name) const;
     // Get the value associated with this name in this scope
-    Value get(std::string name) const;
+    Value get(const std::string& name) const;
     // Set the value associated with this name in this scope
-    void set(std::string name, Value value);
+    void set(const std::string& name, Value value);
 
     void combine(Environment const &other);
 
     void set_parent_scope(Environment *parent) {
         parent_scope = parent;
     }
-    
+
     // Output this scope in readable form to a stream.
     friend std::ostream &operator<<(std::ostream &os, Environment const &v);
 private:
@@ -187,7 +187,7 @@ public:
     Value(std::vector<Value> list) : type(LIST), list(list) {}
 
     // Construct a quoted value
-    static Value quote(Value quoted) {
+    static Value quote(const Value& quoted) {
         Value result;
         result.type = QUOTE;
 
@@ -250,31 +250,31 @@ public:
     std::vector<std::string> get_used_atoms() {
         std::vector<std::string> result, tmp;
         switch (type) {
-        case QUOTE:
-            // The data for a quote is stored in the
-            // first slot of the list member.
-            return list[0].get_used_atoms();
-        case ATOM:
-            // If this is an atom, add it to the list
-            // of used atoms in this expression.
-            result.push_back(as_atom());
-            return result;
-        case LAMBDA:
-            // If this is a lambda, get the list of used atoms in the body
-            // of the expression.
-            return list[1].get_used_atoms();
-        case LIST:
-            // If this is a list, add each of the atoms used in all
-            // of the elements in the list.
-            for (size_t i=0; i<list.size(); i++) {
-                // Get the atoms used in the element
-                tmp = list[i].get_used_atoms();
-                // Add the used atoms to the current list of used atoms
-                result.insert(result.end(), tmp.begin(), tmp.end());
-            }
-            return result;
-        default:
-            return result;
+            case QUOTE:
+                // The data for a quote is stored in the
+                // first slot of the list member.
+                return list[0].get_used_atoms();
+            case ATOM:
+                // If this is an atom, add it to the list
+                // of used atoms in this expression.
+                result.push_back(as_atom());
+                return result;
+            case LAMBDA:
+                // If this is a lambda, get the list of used atoms in the body
+                // of the expression.
+                return list[1].get_used_atoms();
+            case LIST:
+                // If this is a list, add each of the atoms used in all
+                // of the elements in the list.
+                for (size_t i=0; i<list.size(); i++) {
+                    // Get the atoms used in the element
+                    tmp = list[i].get_used_atoms();
+                    // Add the used atoms to the current list of used atoms
+                    result.insert(result.end(), tmp.begin(), tmp.end());
+                }
+                return result;
+            default:
+                return result;
         }
     }
 
@@ -332,12 +332,12 @@ public:
     }
 
     // Push an item to the end of this list
-    void push(Value val) {
+    void push(const Value& val) {
         // If this item is not a list, you cannot push to it.
         // Throw an error.
         if (type != LIST)
             throw Error(*this, Environment(), MISMATCHED_TYPES);
-        
+
         list.push_back(val);
     }
 
@@ -347,7 +347,7 @@ public:
         // Throw an error.
         if (type != LIST)
             throw Error(*this, Environment(), MISMATCHED_TYPES);
-        
+
         // Remember the last item in the list
         Value result = list[list.size()-1];
         // Remove it from this instance
@@ -363,22 +363,22 @@ public:
     // Cast this to an integer value
     Value cast_to_int() const {
         switch (type) {
-        case INT: return *this;
-        case FLOAT: return Value(int(stack_data.f));
-        // Only ints and floats can be cast to an int
-        default:
-            throw Error(*this, Environment(), BAD_CAST);
+            case INT: return *this;
+            case FLOAT: return Value(int(stack_data.f));
+                // Only ints and floats can be cast to an int
+            default:
+                throw Error(*this, Environment(), BAD_CAST);
         }
     }
 
     // Cast this to a floating point value
     Value cast_to_float() const {
         switch (type) {
-        case FLOAT: return *this;
-        case INT: return Value(float(stack_data.i));
-        // Only ints and floats can be cast to a float
-        default:
-            throw Error(*this, Environment(), BAD_CAST);
+            case FLOAT: return *this;
+            case INT: return Value(float(stack_data.i));
+                // Only ints and floats can be cast to a float
+            default:
+                throw Error(*this, Environment(), BAD_CAST);
         }
     }
 
@@ -391,35 +391,35 @@ public:
         // other to a float, and then compare for equality.
         if (type == FLOAT && other.type == INT) return *this == other.cast_to_float();
         else if (type == INT && other.type == FLOAT) return this->cast_to_float() == other;
-        // If the values types aren't equal, then they cannot be equal.
+            // If the values types aren't equal, then they cannot be equal.
         else if (type != other.type) return false;
 
         switch (type) {
-        case FLOAT:
-            return stack_data.f == other.stack_data.f;
-        case INT:
-            return stack_data.i == other.stack_data.i;
-        case BUILTIN:
-            return stack_data.b == other.stack_data.b;
-        case STRING:
-        case ATOM:
-            // Both atoms and strings store their
-            // data in the str member.
-            return str == other.str;
-        case LAMBDA:
-        case LIST:
-            // Both lambdas and lists store their
-            // data in the list member.
-            return list == other.list;
-        case QUOTE:
-            // The values for quotes are stored in the
-            // first slot of the list member.
-            return list[0] == other.list[0];
-        default:
-            return true;
+            case FLOAT:
+                return stack_data.f == other.stack_data.f;
+            case INT:
+                return stack_data.i == other.stack_data.i;
+            case BUILTIN:
+                return stack_data.b == other.stack_data.b;
+            case STRING:
+            case ATOM:
+                // Both atoms and strings store their
+                // data in the str member.
+                return str == other.str;
+            case LAMBDA:
+            case LIST:
+                // Both lambdas and lists store their
+                // data in the list member.
+                return list == other.list;
+            case QUOTE:
+                // The values for quotes are stored in the
+                // first slot of the list member.
+                return list[0] == other.list[0];
+            default:
+                return true;
         }
     }
-    
+
     bool operator!=(Value other) const {
         return !(*this == other);
     }
@@ -439,7 +439,7 @@ public:
     //         throw Error(*this, Environment(), INVALID_ORDER);
     //     }
     // }
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// ORDERING OPERATIONS ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
@@ -447,36 +447,36 @@ public:
     bool operator>=(Value other) const {
         return !(*this < other);
     }
-    
-    bool operator<=(Value other) const {
+
+    bool operator<=(const Value& other) const {
         return (*this == other) || (*this < other);
     }
-    
+
     bool operator>(Value other) const {
         return !(*this <= other);
     }
 
-    bool operator<(Value other) const {
+    bool operator<(const Value& other) const {
         // Other type must be a float or an int
         if (other.type != FLOAT && other.type != INT)
             throw Error(*this, Environment(), INVALID_BIN_OP);
 
         switch (type) {
-        case FLOAT:
-            // If this is a float, promote the other value to a float and compare.
-            return stack_data.f < other.cast_to_float().stack_data.f;
-        case INT:
-            // If the other value is a float, promote this value to a float and compare.
-            if (other.type == FLOAT)
-                return cast_to_float().stack_data.f < other.stack_data.f;
-            // Otherwise compare the integer values
-            else return stack_data.i < other.stack_data.i;
-        default:
-            // Only allow comparisons between integers and floats
-            throw Error(*this, Environment(), INVALID_ORDER);
+            case FLOAT:
+                // If this is a float, promote the other value to a float and compare.
+                return stack_data.f < other.cast_to_float().stack_data.f;
+            case INT:
+                // If the other value is a float, promote this value to a float and compare.
+                if (other.type == FLOAT)
+                    return cast_to_float().stack_data.f < other.stack_data.f;
+                    // Otherwise compare the integer values
+                else return stack_data.i < other.stack_data.i;
+            default:
+                // Only allow comparisons between integers and floats
+                throw Error(*this, Environment(), INVALID_ORDER);
         }
     }
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// ARITHMETIC OPERATIONS //////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
@@ -494,38 +494,38 @@ public:
             throw Error(*this, Environment(), INVALID_BIN_OP);
 
         switch (type) {
-        case FLOAT:
-            // If one is a float, promote the other by default and do
-            // float addition.
-            return Value(stack_data.f + other.cast_to_float().stack_data.f);
-        case INT:
-            // If the other type is a float, go ahead and promote this expression
-            // before continuing with the addition.
-            if (other.type == FLOAT)
-                return Value(cast_to_float() + other.stack_data.f);
-            // Otherwise, do integer addition.
-            else return Value(stack_data.i + other.stack_data.i);
-        case STRING:
-            // If the other value is also a string, do the concat
-            if (other.type == STRING)
-                return Value::string(str + other.str);
-            // We throw an error if we try to concat anything of non-string type
-            else throw Error(*this, Environment(), INVALID_BIN_OP);
-        case LIST:
-            // If the other value is also a list, do the concat
-            if (other.type == LIST) {
-                // Maintain the value that will be returned
-                Value result = *this;
-                // Add each item in the other list to the end of this list
-                for (size_t i=0; i<other.list.size(); i++)
-                    result.push(other.list[i]);
-                return result;
-            
-            } else throw Error(*this, Environment(), INVALID_BIN_OP);
-        case UNIT:
-            return *this;
-        default:
-            throw Error(*this, Environment(), INVALID_BIN_OP);
+            case FLOAT:
+                // If one is a float, promote the other by default and do
+                // float addition.
+                return Value(stack_data.f + other.cast_to_float().stack_data.f);
+            case INT:
+                // If the other type is a float, go ahead and promote this expression
+                // before continuing with the addition.
+                if (other.type == FLOAT)
+                    return Value(cast_to_float() + other.stack_data.f);
+                    // Otherwise, do integer addition.
+                else return Value(stack_data.i + other.stack_data.i);
+            case STRING:
+                // If the other value is also a string, do the concat
+                if (other.type == STRING)
+                    return Value::string(str + other.str);
+                    // We throw an error if we try to concat anything of non-string type
+                else throw Error(*this, Environment(), INVALID_BIN_OP);
+            case LIST:
+                // If the other value is also a list, do the concat
+                if (other.type == LIST) {
+                    // Maintain the value that will be returned
+                    Value result = *this;
+                    // Add each item in the other list to the end of this list
+                    for (size_t i=0; i<other.list.size(); i++)
+                        result.push(other.list[i]);
+                    return result;
+
+                } else throw Error(*this, Environment(), INVALID_BIN_OP);
+            case UNIT:
+                return *this;
+            default:
+                throw Error(*this, Environment(), INVALID_BIN_OP);
         }
     }
 
@@ -541,23 +541,23 @@ public:
             throw Error(*this, Environment(), INVALID_BIN_OP);
 
         switch (type) {
-        case FLOAT:
-            // If one is a float, promote the other by default and do
-            // float subtraction.
-            return Value(stack_data.f - other.cast_to_float().stack_data.f);
-        case INT:
-            // If the other type is a float, go ahead and promote this expression
-            // before continuing with the subtraction
-            if (other.type == FLOAT)
-                return Value(cast_to_float().stack_data.f - other.stack_data.f);
-            // Otherwise, do integer subtraction.
-            else return Value(stack_data.i - other.stack_data.i);
-        case UNIT:
-            // Unit types consume all arithmetic operations.
-            return *this;
-        default:
-            // This operation was done on an unsupported type
-            throw Error(*this, Environment(), INVALID_BIN_OP);
+            case FLOAT:
+                // If one is a float, promote the other by default and do
+                // float subtraction.
+                return Value(stack_data.f - other.cast_to_float().stack_data.f);
+            case INT:
+                // If the other type is a float, go ahead and promote this expression
+                // before continuing with the subtraction
+                if (other.type == FLOAT)
+                    return Value(cast_to_float().stack_data.f - other.stack_data.f);
+                    // Otherwise, do integer subtraction.
+                else return Value(stack_data.i - other.stack_data.i);
+            case UNIT:
+                // Unit types consume all arithmetic operations.
+                return *this;
+            default:
+                // This operation was done on an unsupported type
+                throw Error(*this, Environment(), INVALID_BIN_OP);
         }
     }
 
@@ -571,23 +571,23 @@ public:
         // Other type must be a float or an int
         if (other.type != FLOAT && other.type != INT)
             throw Error(*this, Environment(), INVALID_BIN_OP);
-        
+
         switch (type) {
-        case FLOAT:
-            return Value(stack_data.f * other.cast_to_float().stack_data.f);
-        case INT:
-            // If the other type is a float, go ahead and promote this expression
-            // before continuing with the product
-            if (other.type == FLOAT)
-                return Value(cast_to_float().stack_data.f * other.stack_data.f);
-            // Otherwise, do integer multiplication.
-            else return Value(stack_data.i * other.stack_data.i);
-        case UNIT:
-            // Unit types consume all arithmetic operations.
-            return *this;
-        default:
-            // This operation was done on an unsupported type
-            throw Error(*this, Environment(), INVALID_BIN_OP);
+            case FLOAT:
+                return Value(stack_data.f * other.cast_to_float().stack_data.f);
+            case INT:
+                // If the other type is a float, go ahead and promote this expression
+                // before continuing with the product
+                if (other.type == FLOAT)
+                    return Value(cast_to_float().stack_data.f * other.stack_data.f);
+                    // Otherwise, do integer multiplication.
+                else return Value(stack_data.i * other.stack_data.i);
+            case UNIT:
+                // Unit types consume all arithmetic operations.
+                return *this;
+            default:
+                // This operation was done on an unsupported type
+                throw Error(*this, Environment(), INVALID_BIN_OP);
         }
     }
 
@@ -603,21 +603,21 @@ public:
             throw Error(*this, Environment(), INVALID_BIN_OP);
 
         switch (type) {
-        case FLOAT:
-            return Value(stack_data.f / other.cast_to_float().stack_data.f);
-        case INT:
-            // If the other type is a float, go ahead and promote this expression
-            // before continuing with the product
-            if (other.type == FLOAT)
-                return Value(cast_to_float().stack_data.f / other.stack_data.f);
-            // Otherwise, do integer multiplication.
-            else return Value(stack_data.i / other.stack_data.i);
-        case UNIT:
-            // Unit types consume all arithmetic operations.
-            return *this;
-        default:
-            // This operation was done on an unsupported type
-            throw Error(*this, Environment(), INVALID_BIN_OP);
+            case FLOAT:
+                return Value(stack_data.f / other.cast_to_float().stack_data.f);
+            case INT:
+                // If the other type is a float, go ahead and promote this expression
+                // before continuing with the product
+                if (other.type == FLOAT)
+                    return Value(cast_to_float().stack_data.f / other.stack_data.f);
+                    // Otherwise, do integer multiplication.
+                else return Value(stack_data.i / other.stack_data.i);
+            case UNIT:
+                // Unit types consume all arithmetic operations.
+                return *this;
+            default:
+                // This operation was done on an unsupported type
+                throw Error(*this, Environment(), INVALID_BIN_OP);
         }
     }
 
@@ -631,134 +631,134 @@ public:
         // Other type must be a float or an int
         if (other.type != FLOAT && other.type != INT)
             throw Error(*this, Environment(), INVALID_BIN_OP);
-        
-        switch (type) {
-        // If we support libm, we can find the remainder of floating point values.
-        #ifdef HAS_LIBM
-        case FLOAT:
-            return Value(fmod(stack_data.f, other.cast_to_float().stack_data.f));
-        case INT:
-            if (other.type == FLOAT)
-                return Value(fmod(cast_to_float().stack_data.f, other.stack_data.f));
-            else return Value(stack_data.i % other.stack_data.i);
 
-        #else
-        case INT:
+        switch (type) {
+            // If we support libm, we can find the remainder of floating point values.
+#ifdef HAS_LIBM
+            case FLOAT:
+                return Value(fmod(stack_data.f, other.cast_to_float().stack_data.f));
+            case INT:
+                if (other.type == FLOAT)
+                    return Value(fmod(cast_to_float().stack_data.f, other.stack_data.f));
+                else return Value(stack_data.i % other.stack_data.i);
+
+#else
+                case INT:
             // If we do not support libm, we have to throw errors for floating point values.
             if (other.type != INT)
                 throw Error(other, Environment(), NO_LIBM_SUPPORT);
             return Value(stack_data.i % other.stack_data.i);
-        #endif
+#endif
 
-        case UNIT:
-            // Unit types consume all arithmetic operations.
-            return *this;
-        default:
-            // This operation was done on an unsupported type
-            throw Error(*this, Environment(), INVALID_BIN_OP);
+            case UNIT:
+                // Unit types consume all arithmetic operations.
+                return *this;
+            default:
+                // This operation was done on an unsupported type
+                throw Error(*this, Environment(), INVALID_BIN_OP);
         }
     }
 
     // Get the name of the type of this value
     std::string get_type_name() {
         switch (type) {
-        case QUOTE: return QUOTE_TYPE;
-        case ATOM: return ATOM_TYPE;
-        case INT: return INT_TYPE;
-        case FLOAT: return FLOAT_TYPE;
-        case LIST: return LIST_TYPE;
-        case STRING: return STRING_TYPE;
-        case BUILTIN:
-        case LAMBDA:
-            // Instead of differentiating between
-            // lambda and builtin types, we group them together.
-            // This is because they are both callable.
-            return FUNCTION_TYPE;
-        case UNIT:
-            return UNIT_TYPE;
-        default:
-            // We don't know the name of this type.
-            // This isn't the users fault, this is just unhandled.
-            // This should never be reached.
-            throw Error(*this, Environment(), INTERNAL_ERROR);
+            case QUOTE: return QUOTE_TYPE;
+            case ATOM: return ATOM_TYPE;
+            case INT: return INT_TYPE;
+            case FLOAT: return FLOAT_TYPE;
+            case LIST: return LIST_TYPE;
+            case STRING: return STRING_TYPE;
+            case BUILTIN:
+            case LAMBDA:
+                // Instead of differentiating between
+                // lambda and builtin types, we group them together.
+                // This is because they are both callable.
+                return FUNCTION_TYPE;
+            case UNIT:
+                return UNIT_TYPE;
+            default:
+                // We don't know the name of this type.
+                // This isn't the users fault, this is just unhandled.
+                // This should never be reached.
+                throw Error(*this, Environment(), INTERNAL_ERROR);
         }
     }
 
     std::string display() const {
         std::string result;
         switch (type) {
-        case QUOTE:
-            return "'" + list[0].debug();
-        case ATOM:
-            return str;
-        case INT:
-            return to_string(stack_data.i);
-        case FLOAT:
-            return to_string(stack_data.f);
-        case STRING:
-            return str;
-        case LAMBDA:
-            for (size_t i=0; i<list.size(); i++) {
-                result += list[i].debug();
-                if (i < list.size()-1) result += " ";
-            }
-            return "(lambda " + result + ")";
-        case LIST:
-            for (size_t i=0; i<list.size(); i++) {
-                result += list[i].debug();
-                if (i < list.size()-1) result += " ";
-            }
-            return "(" + result + ")";
-        case BUILTIN:
-            return "<" + str + " at " + to_string(long(stack_data.b)) + ">";
-        case UNIT:
-            return "@";
-        default:
-            // We don't know how to display whatever type this is.
-            // This isn't the users fault, this is just unhandled.
-            // This should never be reached.
-            throw Error(*this, Environment(), INTERNAL_ERROR);
+            case QUOTE:
+                return "'" + list[0].debug();
+            case ATOM:
+                return str;
+            case INT:
+                return to_string(stack_data.i);
+            case FLOAT:
+                return to_string(stack_data.f);
+            case STRING:
+                return str;
+            case LAMBDA:
+                for (size_t i=0; i<list.size(); i++) {
+                    result += list[i].debug();
+                    if (i < list.size()-1) result += " ";
+                }
+                return "(lambda " + result + ")";
+            case LIST:
+                for (size_t i=0; i<list.size(); i++) {
+                    result += list[i].debug();
+                    if (i < list.size()-1) result += " ";
+                }
+                return "(" + result + ")";
+            case BUILTIN:
+                return "<" + str + " at " + to_string(long(stack_data.b)) + ">";
+            case UNIT:
+                return "@";
+            default:
+                // We don't know how to display whatever type this is.
+                // This isn't the users fault, this is just unhandled.
+                // This should never be reached.
+                throw Error(*this, Environment(), INTERNAL_ERROR);
         }
     }
 
     std::string debug() const {
         std::string result;
         switch (type) {
-        case QUOTE:
-            return "'" + list[0].debug();
-        case ATOM:
-            return str;
-        case INT:
-            return to_string(stack_data.i);
-        case FLOAT:
-            return to_string(stack_data.f);
-        case STRING:
-            for (size_t i=0; i<str.length(); i++) {
-                if (str[i] == '"') result += "\\\"";
-                else result.push_back(str[i]);
-            }
-            return "\"" + result + "\"";
-        case LAMBDA:
-            for (size_t i=0; i<list.size(); i++) {
-                result += list[i].debug();
-                if (i < list.size()-1) result += " ";
-            }
-            return "(lambda " + result + ")";
-        case LIST:
-            for (size_t i=0; i<list.size(); i++) {
-                result += list[i].debug();
-                if (i < list.size()-1) result += " ";
-            }
-            return "(" + result + ")";
-        case BUILTIN:
-            return "<" + str + " at " + to_string(long(stack_data.b)) + ">";
-        case UNIT:
-            return "@";
-        default:
-            // We don't know how to debug whatever type this is.
-            // This isn't the users fault, this is just unhandled.
-            // This should never be reached.
-            throw Error(*this, Environment(), INTERNAL_ERROR);
+            case QUOTE:
+                return "'" + list[0].debug();
+            case ATOM:
+                return str;
+            case INT:
+                return to_string(stack_data.i);
+            case FLOAT:
+                return to_string(stack_data.f);
+            case STRING:
+                for (size_t i=0; i<str.length(); i++) {
+                    if (str[i] == '"') result += "\\\"";
+                    else result.push_back(str[i]);
+                }
+                return "\"" + result + "\"";
+            case LAMBDA:
+                for (size_t i=0; i<list.size(); i++) {
+                    result += list[i].debug();
+                    if (i < list.size()-1) result += " ";
+                }
+                return "(lambda " + result + ")";
+            case LIST:
+                for (size_t i=0; i<list.size(); i++) {
+                    result += list[i].debug();
+                    if (i < list.size()-1) result += " ";
+                }
+                return "(" + result + ")";
+            case BUILTIN:
+                return "<" + str + " at " + to_string(long(stack_data.b)) + ">";
+            case UNIT:
+                return "@";
+            default:
+                // We don't know how to debug whatever type this is.
+                // This isn't the users fault, this is just unhandled.
+                // This should never be reached.
+                throw Error(*this, Environment(), INTERNAL_ERROR);
         }
     }
 
@@ -826,7 +826,7 @@ std::ostream &operator<<(std::ostream &os, Environment const &e) {
     return os << "}";
 }
 
-void Environment::set(std::string name, Value value) {
+void Environment::set(const std::string& name, Value value) {
     defs[name] = value;
 }
 
@@ -835,39 +835,39 @@ Value Value::apply(std::vector<Value> args, Environment &env) {
     Environment e;
     std::vector<Value> params;
     switch (type) {
-    case LAMBDA:
-        // Get the list of parameter atoms
-        params = list[0].list;
-        if (params.size() != args.size())
-            throw Error(Value(args), env, args.size() > params.size()?
-                TOO_MANY_ARGS : TOO_FEW_ARGS
-            );
+        case LAMBDA:
+            // Get the list of parameter atoms
+            params = list[0].list;
+            if (params.size() != args.size())
+                throw Error(Value(args), env, args.size() > params.size()?
+                                              TOO_MANY_ARGS : TOO_FEW_ARGS
+                );
 
-        // Get the captured scope from the lambda
-        e = lambda_scope;
-        // And make this scope the parent scope
-        e.set_parent_scope(&env);
+            // Get the captured scope from the lambda
+            e = lambda_scope;
+            // And make this scope the parent scope
+            e.set_parent_scope(&env);
 
-        // Iterate through the list of parameters and
-        // insert the arguments into the scope.
-        for (size_t i=0; i<params.size(); i++) {
-            if (params[i].type != ATOM) 
-                throw Error(*this, env, INVALID_LAMBDA);
-            // Set the parameter name into the scope.
-            e.set(params[i].str, args[i]);
-        }
+            // Iterate through the list of parameters and
+            // insert the arguments into the scope.
+            for (size_t i=0; i<params.size(); i++) {
+                if (params[i].type != ATOM)
+                    throw Error(*this, env, INVALID_LAMBDA);
+                // Set the parameter name into the scope.
+                e.set(params[i].str, args[i]);
+            }
 
-        // Evaluate the function body with the function scope
-        return list[1].eval(e);
-    case BUILTIN:
-        // Here, we call the builtin function with the current scope.
-        // This allows us to write special forms without syntactic sugar.
-        // For functions that are not special forms, we just evaluate
-        // the arguments before we run the function.
-        return (stack_data.b)(args, env);
-    default:
-        // We can only call lambdas and builtins
-        throw Error(*this, env, CALL_NON_FUNCTION);
+            // Evaluate the function body with the function scope
+            return list[1].eval(e);
+        case BUILTIN:
+            // Here, we call the builtin function with the current scope.
+            // This allows us to write special forms without syntactic sugar.
+            // For functions that are not special forms, we just evaluate
+            // the arguments before we run the function.
+            return (stack_data.b)(args, env);
+        default:
+            // We can only call lambdas and builtins
+            throw Error(*this, env, CALL_NON_FUNCTION);
     }
 }
 
@@ -877,32 +877,32 @@ Value Value::eval(Environment &env) {
     Value function;
     Environment e;
     switch (type) {
-    case QUOTE:
-        return list[0];
-    case ATOM:
-        return env.get(str);
-    case LIST:
-        if (list.size() < 1)
-            throw Error(*this, env, EVAL_EMPTY_LIST);
+        case QUOTE:
+            return list[0];
+        case ATOM:
+            return env.get(str);
+        case LIST:
+            if (list.size() < 1)
+                throw Error(*this, env, EVAL_EMPTY_LIST);
 
-        args = std::vector<Value>(list.begin() + 1, list.end());
-        
-        // Only evaluate our arguments if it's not builtin!
-        // Builtin functions can be special forms, so we
-        // leave them to evaluate their arguments.
-        function = list[0].eval(env);
+            args = std::vector<Value>(list.begin() + 1, list.end());
 
-        if (!function.is_builtin())
-            for (size_t i=0; i<args.size(); i++)
-                args[i] = args[i].eval(env);
+            // Only evaluate our arguments if it's not builtin!
+            // Builtin functions can be special forms, so we
+            // leave them to evaluate their arguments.
+            function = list[0].eval(env);
 
-        return function.apply(
-            args,
-            env
-        );
+            if (!function.is_builtin())
+                for (size_t i=0; i<args.size(); i++)
+                    args[i] = args[i].eval(env);
 
-    default:
-        return *this;
+            return function.apply(
+                    args,
+                    env
+            );
+
+        default:
+            return *this;
     }
 }
 
@@ -942,20 +942,20 @@ Value parse(std::string &s, int &ptr) {
 
         while (s[ptr] != ')')
             result.push(parse(s, ptr));
-        
+
         skip_whitespace(s, ++ptr);
         return result;
-        
+
     } else if (isdigit(s[ptr]) || (s[ptr] == '-' && isdigit(s[ptr + 1]))) {
         // If this is a number
         bool negate = s[ptr] == '-';
         if (negate) ptr++;
-        
+
         int save_ptr = ptr;
         while (isdigit(s[ptr]) || s[ptr] == '.') ptr++;
         std::string n = s.substr(save_ptr, ptr);
         skip_whitespace(s, ptr);
-        
+
         if (n.find('.') != std::string::npos)
             return Value((negate? -1 : 1) * atof(n.c_str()));
         else return Value((negate? -1 : 1) * atoi(n.c_str()));
@@ -966,7 +966,7 @@ Value parse(std::string &s, int &ptr) {
         while (s[ptr + n] != '\"') {
             if (ptr + n >= int(s.length()))
                 throw std::runtime_error(MALFORMED_PROGRAM);
-                
+
             if (s[ptr + n] == '\\') n++;
             n++;
         }
@@ -1080,7 +1080,7 @@ namespace builtin {
     Value define(std::vector<Value> args, Environment &env) {
         if (args.size() != 2)
             throw Error(Value("define", define), env, args.size() > 2? TOO_MANY_ARGS : TOO_FEW_ARGS);
-            
+
         Value result = args[1].eval(env);
         env.set(args[0].display(), result);
         return result;
@@ -1151,7 +1151,7 @@ namespace builtin {
         return Value(v);
     }
 
-    #ifdef USE_STD
+#ifdef USE_STD
     // Exit the program with an integer code
     Value exit(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
@@ -1251,7 +1251,7 @@ namespace builtin {
         env.combine(e);
         return result;
     }
-    #endif
+#endif
 
     // Evaluate a value as code
     Value eval(std::vector<Value> args, Environment &env) {
@@ -1267,7 +1267,7 @@ namespace builtin {
     Value list(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
-        
+
         return Value(args);
     }
 
@@ -1275,10 +1275,10 @@ namespace builtin {
     Value sum(std::vector<Value> args, Environment &env) {
         // Is not a special form, so we can evaluate our args.
         eval_args(args, env);
-        
+
         if (args.size() < 2)
             throw Error(Value("+", sum), env, TOO_FEW_ARGS);
-        
+
         Value acc = args[0];
         for (size_t i=1; i<args.size(); i++)
             acc = acc + args[i];
@@ -1477,9 +1477,9 @@ namespace builtin {
 
         if (args.size() != 1)
             throw Error(Value("len", len), env, args.size() > 1?
-                TOO_MANY_ARGS : TOO_FEW_ARGS
+                                                TOO_MANY_ARGS : TOO_FEW_ARGS
             );
-        
+
         return Value(int(args[0].as_list().size()));
     }
 
@@ -1528,7 +1528,7 @@ namespace builtin {
 
         for (size_t i = 1; i<list.size(); i++)
             result.push_back(list[i]);
-        
+
         return Value(result);
     }
 
@@ -1680,7 +1680,7 @@ void repl(Environment &env) {
 }
 
 // Does this environment, or its parent environment, have a variable?
-bool Environment::has(std::string name) const {
+bool Environment::has(const std::string& name) const {
     // Find the value in the map
     std::map<std::string, Value>::const_iterator itr = defs.find(name);
     if (itr != defs.end())
@@ -1694,7 +1694,7 @@ bool Environment::has(std::string name) const {
 }
 
 // Get the value associated with this name in this scope
-Value Environment::get(std::string name) const {
+Value Environment::get(const std::string& name) const {
     // Meta operations
     if (name == "eval")  return Value("eval",  builtin::eval);
     if (name == "type")  return Value("type",  builtin::get_type_name);
@@ -1748,7 +1748,7 @@ Value Environment::get(std::string name) const {
     if (name == "reduce") return Value("reduce", builtin::reduce_list);
 
     // IO operations
-    #ifdef USE_STD
+#ifdef USE_STD
     if (name == "exit")       return Value("exit",       builtin::exit);
     if (name == "quit")       return Value("quit",       builtin::exit);
     if (name == "print")      return Value("print",      builtin::print);
@@ -1757,20 +1757,20 @@ Value Environment::get(std::string name) const {
     if (name == "include")    return Value("include",    builtin::include);
     if (name == "read-file")  return Value("read-file",  builtin::read_file);
     if (name == "write-file") return Value("write-file", builtin::write_file);
-    #endif
+#endif
 
     // String operations
     if (name == "debug")   return Value("debug",   builtin::debug);
     if (name == "replace") return Value("replace", builtin::replace);
     if (name == "display") return Value("display", builtin::display);
-    
+
     // Casting operations
     if (name == "int")   return Value("int",   builtin::cast_to_int);
     if (name == "float") return Value("float", builtin::cast_to_float);
 
     // Constants
     if (name == "endl") return Value::string("\n");
-    
+
     std::map<std::string, Value>::const_iterator itr = defs.find(name);
     if (itr != defs.end()) return itr->second;
     else if (parent_scope != NULL) {
@@ -1789,7 +1789,7 @@ int main(int argc, const char **argv) {
         args.push_back(Value::string(argv[i]));
     env.set("cmd-args", Value(args));
 
-    #ifdef USE_STD
+#ifdef USE_STD
     srand(time(NULL));
     try {
         if (argc == 1 || (argc == 2 && std::string(argv[1]) == "-i"))
@@ -1804,10 +1804,10 @@ int main(int argc, const char **argv) {
     } catch (std::runtime_error &e) {
         std::cerr << e.what() << std::endl;
     }
-    #else
+#else
     if (argc == 3 && std::string(argv[1]) == "-c")
         run(argv[2], env);
-    #endif
+#endif
 
     return 0;
 }
