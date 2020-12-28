@@ -809,7 +809,7 @@ std::string Error::description() {
 void Environment::combine(Environment const &other) {
     // Normally, I would use the `insert` method of the `map` class,
     // but it doesn't overwrite previously declared values for keys.
-    std::map<std::string, Value>::const_iterator itr = other.defs.begin();
+    auto itr = other.defs.begin();
     for (; itr!=other.defs.end(); itr++) {
         // Iterate through the keys and assign each value.
         defs[itr->first] = itr->second;
@@ -817,7 +817,7 @@ void Environment::combine(Environment const &other) {
 }
 
 std::ostream &operator<<(std::ostream &os, Environment const &e) {
-    std::map<std::string, Value>::const_iterator itr = e.defs.begin();
+    auto itr = e.defs.begin();
     os << "{ ";
     for (; itr != e.defs.end(); itr++) {
         os << '\'' << itr->first << "' : " << itr->second.debug() << ", ";
@@ -1681,7 +1681,7 @@ void repl(Environment &env) {
 // Does this environment, or its parent environment, have a variable?
 bool Environment::has(const std::string& name) const {
     // Find the value in the map
-    std::map<std::string, Value>::const_iterator itr = defs.find(name);
+    auto itr = defs.find(name);
     if (itr != defs.end())
         // If it was found
         return true;
@@ -1770,7 +1770,7 @@ Value Environment::get(const std::string& name) const {
     // Constants
     if (name == "endl") return Value::string("\n");
 
-    std::map<std::string, Value>::const_iterator itr = defs.find(name);
+    auto itr = defs.find(name);
     if (itr != defs.end()) return itr->second;
     else if (parent_scope != nullptr) {
         itr = parent_scope->defs.find(name);
