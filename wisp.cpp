@@ -149,14 +149,13 @@ private:
 
 
 // An exception thrown by the lisp
-class Error {
+class Error : std::exception {
 public:
     // Create an error with the value that caused the error,
     // the scope where the error was found, and the message.
     Error(Value v, Environment const &env, const char *msg);
     // Copy constructor is needed to prevent double frees
     Error(Error const &other);
-    ~Error();
 
     // Get the printable error description.
     std::string description();
@@ -198,7 +197,7 @@ public:
     }
 
     // Construct an atom
-    static Value atom(std::string s) {
+    static Value atom(const std::string& s) {
         Value result;
         result.type = ATOM;
 
@@ -208,7 +207,7 @@ public:
     }
 
     // Construct a string
-    static Value string(std::string s) {
+    static Value string(const std::string& s) {
         Value result;
         result.type = STRING;
 
@@ -234,7 +233,7 @@ public:
     }
 
     // Construct a builtin function
-    Value(std::string name, Builtin b) : type(BUILTIN) {
+    Value(const std::string& name, Builtin b) : type(BUILTIN) {
         // Store the name of the builtin function in the str member
         // to save memory, and use the builtin function slot in the union
         // to store the function pointer.
