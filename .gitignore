@@ -4,3 +4,6 @@ main
 lisp
 wisp
 boot.lisp
+cmake-build-debug/
+cmake-build-release/
+
