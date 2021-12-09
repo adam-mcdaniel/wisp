@@ -917,9 +917,9 @@ Value parse(std::string &s, int &ptr) {
 
     while (s[ptr] == ';') {
         // If this is a comment
-        int save_ptr = ptr;
-        while (s[save_ptr] != '\n' && save_ptr < int(s.length())) { save_ptr++; }
-        s.erase(ptr, save_ptr - ptr);
+        int work_ptr = ptr;
+        while (s[work_ptr] != '\n' && work_ptr < int(s.length())) { work_ptr++; }
+        ptr = work_ptr;
         skip_whitespace(s, ptr);
 
         if (s.substr(ptr, s.length()-ptr-1) == "")
