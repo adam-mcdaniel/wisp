@@ -92,7 +92,15 @@ std::string read_file_contents(std::string filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Convert an object to a string using a stringstream conveniently
-#define to_string( x ) static_cast<std::ostringstream&>((std::ostringstream() << std::dec << x )).str()
+template <typename T>
+std::string to_string(T t) {
+    // Create a stringstream
+    std::ostringstream ss;
+    // Convert the object to a string
+    ss << std::dec << t;
+    // Return the string
+    return ss.str();
+}
 
 // Replace a substring with a replacement string in a source string
 void replace_substring(std::string &src, std::string substr, std::string replacement) {
@@ -915,18 +923,22 @@ void skip_whitespace(std::string &s, int &ptr) {
 Value parse(std::string &s, int &ptr) {
     skip_whitespace(s, ptr);
 
+    // Skip comments
     while (s[ptr] == ';') {
         // If this is a comment
-        int save_ptr = ptr;
-        while (s[save_ptr] != '\n' && save_ptr < int(s.length())) { save_ptr++; }
-        s.erase(ptr, save_ptr - ptr);
+        int work_ptr = ptr;
+        // Skip to the end of the line
+        while (s[work_ptr] != '\n' && work_ptr < int(s.length())) { work_ptr++; }
+        ptr = work_ptr;
         skip_whitespace(s, ptr);
 
+        // If we're at the end of the string, return an empty value
         if (s.substr(ptr, s.length()-ptr-1) == "")
             return Value();
     }
 
 
+    // Parse the value
     if (s == "") {
         return Value();
     } else if (s[ptr] == '\'') {
@@ -1144,7 +1156,7 @@ namespace builtin {
     }
 
     // Quote an expression (SPECIAL FORM)
-    Value quote(std::vector<Value> args, Environment &env) {
+    Value quote(std::vector<Value> args, Environment &) {
         std::vector<Value> v;
         for (size_t i=0; i<args.size(); i++)
             v.push_back(args[i]);
@@ -1430,7 +1442,7 @@ namespace builtin {
 
         std::vector<Value> list = args[0].as_list();
         int i = args[1].as_int();
-        if (list.empty() || i >= list.size())
+        if (list.empty() || i >= (int)list.size())
             throw Error(list, env, INDEX_OUT_OF_RANGE);
 
         return list[i];
@@ -1446,7 +1458,7 @@ namespace builtin {
 
         std::vector<Value> list = args[0].as_list();
         int i = args[1].as_int();
-        if (i > list.size())
+        if (i > (int)list.size())
             throw Error(list, env, INDEX_OUT_OF_RANGE);
 
         list.insert(list.begin() + args[1].as_int(), args[2]);
@@ -1463,7 +1475,7 @@ namespace builtin {
 
         std::vector<Value> list = args[0].as_list();
         int i = args[1].as_int();
-        if (list.empty() || i >= list.size())
+        if (list.empty() || i >= (int)list.size())
             throw Error(list, env, INDEX_OUT_OF_RANGE);
 
         list.erase(list.begin() + i);
@@ -1798,6 +1810,8 @@ int main(int argc, const char **argv) {
             run(argv[2], env);
         else if (argc == 3 && std::string(argv[1]) == "-f")
             run(read_file_contents(argv[2]), env);
+        else if (argc == 2)
+            run(read_file_contents(argv[1]), env);
         else std::cerr << "invalid arguments" << std::endl;
     } catch (Error &e) {
         std::cerr << e.description() << std::endl;

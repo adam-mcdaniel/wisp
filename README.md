@@ -1,7 +1,13 @@
-# wisp
-
-A light lisp written in C++
-![Wisp](./assets/wisp.png)
+<div align="center">
+  <h1>👻<b>wisp</b>✨</h1>
+  <p>
+    <strong>A lisp written in C++</strong>
+  </p>
+  <p float="left">
+    <img src="./assets/logo.png" width="43%"/>
+    <img src="./assets/wisp.png" width="56%"/>
+  </p>
+</div>
 
 ## Why write a lisp?
 
