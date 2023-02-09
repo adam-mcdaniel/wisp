@@ -1,7 +1,7 @@
 <div align="center">
   <h1>👻<b>wisp</b>✨</h1>
   <p>
-    <strong>A lisp written in C++</strong>
+    <strong>A lisp👽 written in C++</strong>
   </p>
   <p float="left">
     <img src="./assets/logo.png" width="43%"/>
