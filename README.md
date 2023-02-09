@@ -146,6 +146,8 @@ Hello world!
 Interpret a file:
 
 ```bash
+$ ./wisp "examples/hello_world.lisp"
+Hello world!
 $ ./wisp -f "examples/hello_world.lisp"
 Hello world!
 ```
