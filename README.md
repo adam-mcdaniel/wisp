@@ -11,10 +11,10 @@
 
 ## Why write a lisp?
 
-Lisp is one of those niche, beautiful languages that people only really use to either
+Lisp is one of those niche, beautiful languages that people only use for two specific purposes:
 
 1. Write a lisp interpreter
-2. Show off how "code is data!!!"
+2. To illustrate that code is data!!
 
 _So why add to the list of infinite lisp interpreters?_
 
