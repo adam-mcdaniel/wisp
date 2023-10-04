@@ -1661,7 +1661,7 @@ void repl(Environment &env) {
     std::string input;
     Value tmp;
     std::vector<Value> parsed;
-    while (true) {
+    while (std::cin) {
         std::cout << ">>> ";
         std::getline(std::cin, input);
         if (input == "!quit" || input == "!q")
