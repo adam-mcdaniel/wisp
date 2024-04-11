@@ -4,8 +4,8 @@
     <strong>A lisp👽 written in C++</strong>
   </p>
   <p float="left">
-    <img src="./assets/logo.png" width="43%"/>
-    <img src="./assets/wisp.png" width="56%"/>
+    <img src="./assets/logo.png" width="40%"/>
+    <img src="./assets/wisp.png" width="58%"/>
   </p>
 </div>
 
