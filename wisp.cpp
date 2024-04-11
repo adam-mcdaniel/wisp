@@ -113,7 +113,7 @@ void replace_substring(std::string &src, std::string substr, std::string replace
 
 // Is this character a valid lisp symbol character
 bool is_symbol(char ch) {
-    return (isalpha(ch) || ispunct(ch)) && ch != '(' && ch != ')' && ch != '"' && ch != '\'';
+    return (isalnum(ch) || ispunct(ch)) && ch != '(' && ch != ')' && ch != '"' && ch != '\'';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
